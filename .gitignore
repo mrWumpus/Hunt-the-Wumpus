@@ -1,0 +1,5 @@
+# ignore compiled fasl files
+*.fasl
+
+# Ignore vim swaps
+*.swp
