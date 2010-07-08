@@ -6,7 +6,7 @@
       (push num ret-range))
     ret-range))
 
-(defun random-item (lst)
+(defun delete-random-item (lst)
   "Chose and remove an item from list. This is a destructive call"
   (let ((ret-item 
           (nth (random (length lst)) lst)))
