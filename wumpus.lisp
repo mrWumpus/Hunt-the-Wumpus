@@ -11,19 +11,27 @@
 
 (defvar *player-location* 0)
 (defvar *arrow-count* 5)
-(defvar *wumpus-location*) 
-(defvar *pits*)
-(defvar *bats*)
+(defvar *wumpus-location* 0) 
+(defvar *pits* ())
+(defvar *bats* ())
 
 (defparameter *current-map* *dodecahedral-map*)
 
+(defun setup-positions()
+  (let ((rooms (range 20)))
+    (setf *player-location* (random-item rooms))
+    (setf *wumpus-location* (random-item rooms))
+    (setf *pits* ())
+    (setf *bats* ())
+    (push (random-item rooms) *pits*) 
+    (push (random-item rooms) *bats*) 
+    (push (random-item rooms) *pits*) 
+    (push (random-item rooms) *bats*))) 
+
 (defun hunt-the-wumpus ()
-  (let ((*player-location* 0)
-        (*wumpus-location* (random 20))
-        (*pits* (list (random 20) (random 20)))
-        (*bats* (list (random 20) (random 20))))
-    (format t "Hunt the Wumpus!~%")
-    (print-location-with-warnings)))
+  (setup-positions)
+  (format *query-io* "Hunt the Wumpus!~%")
+  (print-location-with-warnings))
 
 (declaim (inline room-number read-room-number))
 ;;; Display the room numbers starting at 0.
@@ -61,3 +69,12 @@
 
 (defun is-room-in-list (cur-room list)
   (find cur-room list))
+
+(defun ask-instructions ()
+  (format *query-io* "Instructions ")
+  (force-output *query-io*)
+  (when (y-or-n-p) (print-instructions)))
+
+(defun print-instructions ()
+  (display-file "instructions.txt")
+  (values))
