@@ -2,20 +2,13 @@
 
 (declaim (optimize (speed 0) (space 0) (compilation-speed 0) (safety 2) (debug 3)))
 
-;;; Some maps
-(defvar *dodecahedral-map*
-  '((1 4 7) (0 2 9) (1 3 11) (2 4 13) (0 3 5)
-    (4 6 14) (5 7 16) (0 6 8) (7 9 17) (1 8 10)
-    (9 11 18) (2 10 12) (11 13 19) (3 12 14) (5 13 15)
-    (14 16 19) (6 15 17) (8 16 18) (10 17 19) (12 15 18)))
-
 (defvar *player-location* 0)
 (defvar *arrow-count* 5)
 (defvar *wumpus-location* 0) 
 (defvar *pits* ())
 (defvar *bats* ())
 
-(defparameter *current-map* *dodecahedral-map*)
+(defparameter *current-map* *dodecahedron*)
 
 (defun setup-positions()
   (let ((rooms (range 20)))
@@ -78,3 +71,8 @@
 (defun print-instructions ()
   (display-file "instructions.txt")
   (values))
+
+(defun redo-loop (fun)
+  (do ((doit t (y-or-n-p "Play again?")))
+    ((null doit))
+    (funcall fun)))
