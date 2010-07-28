@@ -22,12 +22,15 @@
                      :bats (bats game))))
     copy))
 
+(defun next-rooms (game location)
+  (declare (wumpus-game game))
+  (nth location (game-map game)))
 
 (defmethod next-player-rooms ((game wumpus-game))
-  (nth (player-location game) (game-map game)))
+  (next-rooms game (player-location game)))
 
 (defmethod next-wumpus-rooms ((game wumpus-game))
-  (nth (wumpus-location game) (game-map game)))
+  (next-rooms game (wumpus-location game)))
 
 (defmethod is-wumpus-room ((game wumpus-game) room)
   (= room (wumpus-location game)))
@@ -92,12 +95,11 @@
              (format *query-io* "I feel a draft.~%"))
             ((is-bat-room game cur-room)
              (format *query-io* "Bats nearby!~%"))))
-    (format *query-io* "You are in room ~A~%Tunnels lead to ~A ~A ~A~%"
+    (format *query-io* "You are in room ~A~%Tunnels lead to ~A ~A ~A~%~%"
             (room-number (player-location game))
             (room-number (first next-rooms))
             (room-number (first (rest next-rooms)))
-            (room-number (first (last next-rooms)))))
-  (values))
+            (room-number (first (last next-rooms))))))
 
 (defvar *game-setup* nil)
 (defvar *current-game*)
@@ -158,7 +160,42 @@
 
 (defun shoot-input (wumpus-game)
   (declare (wumpus-game wumpus-game))
-  (format *query-io* "SHOOT!~%"))
+  (decf (arrow-count wumpus-game))
+  (let* ((num-rooms (input-value "Number of rooms (1-5)"
+                                 :validator (lambda (val)
+                                              (and (integerp val) (> val 0) (< val 6)))
+                                 :error-prompt "Please enter a number between 1 and 5"))
+         (room-list (collect-shoot-rooms num-rooms))
+         (cur-room (player-location wumpus-game)))
+    (dolist (next-room room-list)
+      (let ((next-rooms (next-rooms wumpus-game cur-room)))
+        (if (find next-room next-rooms)
+          (setf cur-room next-room)
+          (setf cur-room (nth (random (length next-rooms)) next-rooms)))
+        (cond
+          ((is-wumpus-room wumpus-game cur-room)
+           (setf (status wumpus-game) 1)
+           (format *query-io* "AHA! You got the Wumpus!~%"))
+          ((eq (player-location wumpus-game) cur-room)
+           (setf (status wumpus-game) -1)
+           (format *query-io* "Ouch! Arrow got you!~%")))))
+    (when (eq 0 (status wumpus-game))
+      (when (eq 0 (arrow-count wumpus-game))
+        (setf (status wumpus-game) -1))
+      (format *query-io* "Missed!~%")
+      (move-wumpus! wumpus-game))))
+
+(defun collect-shoot-rooms (num)
+  (let ((retlist nil))
+    (dotimes (x num)
+      (push (input-value "Room#"
+                         :validator (lambda (val)
+                                      (and (integerp val) (> val 0) (< val 21)))
+                         :error-prompt "Please enter a valid room number."
+                         :transformer (lambda (val)
+                                        (read-room-number val)))
+            retlist))
+    (nreverse retlist)))
 
 (declaim (inline room-number read-room-number))
 ;;; Display the room numbers starting at 0.
@@ -181,14 +218,25 @@
     ((null doit))
     (funcall fun)))
 
+(defun epilogue (wumpus-game)
+  (declare (wumpus-game) (wumpus-game))
+  (with-slots
+    (status) wumpus-game
+    (if
+      (< status 0)
+      (format *query-io* "Ha ha ha, you lose!~%")
+      (format *query-io* "Hee hee hee, the Wumpus'll getcha next time.~%"))))
+
 (defun hunt-the-wumpus ()
   (let ((*game-setup* nil))
     (format *query-io* "Hunt the Wumpus!~%")
     (ask-instructions)
     (redo-loop (lambda ()
-        (do ((game (initialize)))
-          ((not (eq 0 (status game))))
-          (print-location-with-warnings game)
-          (move-or-shoot game))))
+        (let ((game (initialize)))
+          (do ()
+            ((not (eq 0 (status game))))
+            (print-location-with-warnings game)
+            (move-or-shoot game))
+          (epilogue game))))
     (values)))
 
