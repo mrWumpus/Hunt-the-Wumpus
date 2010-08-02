@@ -1,6 +1,6 @@
 (in-package :net.sinawali.wumpus)
 
-(declaim (optimize (speed 0) (space 0) (compilation-speed 0) (safety 2) (debug 3)))
+(declaim (optimize (speed 1) (space 0) (compilation-speed 0) (safety 2) (debug 3)))
 
 (defclass wumpus-game ()
   ((status :accessor status :initarg :status :initform nil)
@@ -92,7 +92,7 @@
              (format *query-io* "I feel a draft.~%"))
             ((is-bat-room game cur-room)
              (format *query-io* "Bats nearby!~%"))))
-    (format *query-io* "You are in room ~A~%Tunnels lead to ~A ~A ~A"
+    (format *query-io* "You are in room ~A~%Tunnels lead to ~A ~A ~A~%"
             (room-number (player-location game))
             (room-number (first next-rooms))
             (room-number (first (rest next-rooms)))
@@ -133,13 +133,32 @@
     (setf (arrow-count game-copy) 5)
     (setf *current-game* game-copy)))
 
-(defun hunt-the-wumpus ()
-  (format *query-io* "Hunt the Wumpus!~%")
-  (do ((game (initialize)))
-    ((not (eq 0 (status game))))
-    (print-location-with-warnings game)
-    ;; move or shoot
-    ))
+(defun move-or-shoot (wumpus-game)
+  (declare (wumpus-game wumpus-game))
+  (let ((cmd
+          (input-string "(m)ove or (s)hoot?"
+                        :validator (lambda (str)
+                                     (let ((lc-str (string-downcase str)))
+                                       (or (string= lc-str "m")
+                                           (string= lc-str "s"))))
+                        :error-prompt "Please enter 'm' or 's'.")))
+    (cond
+      ((string= (string-downcase cmd) "m")
+       (move-input wumpus-game))
+      ((string= (string-downcase cmd) "s")
+       (shoot-input wumpus-game)))))
+
+(defun move-input (wumpus-game)
+  (declare (wumpus-game wumpus-game))
+  (let ((to-room (input-value "Which room?"
+                              :validator (lambda (val)
+                                           (and (integerp val) (> val 0) (< val 21)))
+                              :error-prompt "Please enter a valid room number.")))
+    (move-player! wumpus-game to-room)))
+
+(defun shoot-input (wumpus-game)
+  (declare (wumpus-game wumpus-game))
+  (format *query-io* "SHOOT!~%"))
 
 (declaim (inline room-number read-room-number))
 ;;; Display the room numbers starting at 0.
@@ -155,10 +174,21 @@
   (when (y-or-n-p "Instructions") (print-instructions)))
 
 (defun print-instructions ()
-  (display-file "instructions.txt")
-  (values))
+  (display-file "instructions.txt"))
 
 (defun redo-loop (fun)
   (do ((doit t (y-or-n-p "Play again?")))
     ((null doit))
     (funcall fun)))
+
+(defun hunt-the-wumpus ()
+  (let ((*game-setup* nil))
+    (format *query-io* "Hunt the Wumpus!~%")
+    (ask-instructions)
+    (redo-loop (lambda ()
+        (do ((game (initialize)))
+          ((not (eq 0 (status game))))
+          (print-location-with-warnings game)
+          (move-or-shoot game))))
+    (values)))
+
