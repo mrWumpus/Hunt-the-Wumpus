@@ -18,3 +18,7 @@
     (1 2 15) (2 3 11) (3 4 12) (4 5 13) (5 6 14)
     (7 16 20) (8 16 17) (9 17 18) (10 18 19) (6 19 20)
     (1 11 12) (2 12 13) (3 13 14) (4 14 15) (5 11 15)))
+
+(defparameter *maps* '(("dodecahedron" *dodecahedron*)
+                       ("mobius strip" *mobius-strip*)
+                       ("torus" *torus*)))

@@ -11,7 +11,8 @@
    (pits :accessor pits :initarg :pits :initform nil)
    (bats :accessor bats :initarg :bats :initform nil)))
 
-(defmethod copy-game ((game wumpus-game))
+(defun copy-game (game)
+  (declare (wumpus-game game))
   (let ((copy (make-instance 'wumpus-game
                      :status (status game) 
                      :arrow-count (status game) 
@@ -22,35 +23,60 @@
                      :bats (bats game))))
     copy))
 
+(declaim (inline next-rooms next-player-rooms next-wumpus-rooms 
+                 is-wumpus-room is-pit-room is-bat-room
+                 in-wumpus-room in-pit-room in-bat-room))
+
 (defun next-rooms (game location)
   (declare (wumpus-game game))
   (nth location (game-map game)))
 
-(defmethod next-player-rooms ((game wumpus-game))
+(defun next-player-rooms (game)
+  (declare (wumpus-game game))
   (next-rooms game (player-location game)))
 
-(defmethod next-wumpus-rooms ((game wumpus-game))
+(defun next-wumpus-rooms (game)
+  (declare (wumpus-game game))
   (next-rooms game (wumpus-location game)))
 
-(defmethod is-wumpus-room ((game wumpus-game) room)
+(defun is-wumpus-room (game room)
+  (declare (wumpus-game game))
   (= room (wumpus-location game)))
 
-(defmethod is-pit-room ((game wumpus-game) room)
+(defun is-pit-room (game room)
+  (declare (wumpus-game game))
   (find room (pits game)))
 
-(defmethod is-bat-room ((game wumpus-game) room)
+(defun is-bat-room (game room)
+  (declare (wumpus-game game))
   (find room (bats game)))
 
-(defmethod in-wumpus-room ((game wumpus-game))
+(defun in-wumpus-room (game)
+  (declare (wumpus-game game))
   (is-wumpus-room game (player-location game)))
 
-(defmethod in-pit-room ((game wumpus-game))
+(defun in-pit-room (game)
+  (declare (wumpus-game game))
   (is-pit-room game (player-location game)))
 
-(defmethod in-bat-room ((game wumpus-game))
+(defun in-bat-room (game)
+  (declare (wumpus-game game))
   (is-bat-room game (player-location game)))
 
-(defmethod move-player! ((game wumpus-game) room-number)
+(defun get-map (idx)
+  (eval (cadr (elt *maps* idx))))
+
+(defun select-map ()
+  (dotimes (idx (length *maps*))
+    (let ((cur-map (elt *maps* idx)))
+      (format *query-io* "~D: ~A~%" (1+ idx) (car cur-map))))
+  (let ((map-num (input-value "Please select map:"
+                              :validator (lambda (val)
+                                           (and (numberp val) (> val 0) (<= val (length *maps*)))))))
+    (get-map (1- map-num))))
+
+(defun move-player! (game room-number)
+  (declare (wumpus-game game))
   (let ((to-room (read-room-number room-number))
         (next-rooms (next-player-rooms game)))
     (if (find to-room next-rooms)
@@ -60,7 +86,8 @@
       (format *query-io* "Invalid move.~%")))
   game)
 
-(defmethod move-wumpus! ((game wumpus-game))
+(defun move-wumpus! (game)
+  (declare (wumpus-game game))
   (let ((to-room-idx (random 4)))
     (when (< to-room-idx 3)
       (setf (wumpus-location game)
@@ -71,7 +98,8 @@
     (setf (status game) -1))
   game)
 
-(defmethod check-for-hazards! ((game wumpus-game))
+(defun check-for-hazards! (game)
+  (declare (wumpus-game game))
   (when (in-wumpus-room game)
      (format *query-io* "...Oops! Bumped a Wumpus!~%")
      (move-wumpus! game))
@@ -86,7 +114,8 @@
         (check-for-hazards! game))))
   game)
 
-(defmethod print-location-with-warnings ((game wumpus-game))
+(defun print-location-with-warnings (game)
+  (declare (wumpus-game game))
   (let ((next-rooms (next-player-rooms game)))
     (dolist (cur-room next-rooms)
       (cond ((is-wumpus-room game cur-room)
@@ -95,8 +124,9 @@
              (format *query-io* "I feel a draft.~%"))
             ((is-bat-room game cur-room)
              (format *query-io* "Bats nearby!~%"))))
-    (format *query-io* "You are in room ~A~%Tunnels lead to ~A ~A ~A~%~%"
+    (format *query-io* "You are in room ~A with ~D arrow~:P.~%Tunnels lead to ~A ~A ~A~%~%"
             (room-number (player-location game))
+            (arrow-count game)
             (room-number (first next-rooms))
             (room-number (first (rest next-rooms)))
             (room-number (first (last next-rooms))))))
@@ -105,6 +135,7 @@
 (defvar *current-game*)
 
 (defun print-state (game)
+  (declare (wumpus-game game))
   (format t "Player location: ~D~%Wumpus room: ~D~%Pits: ~A~%Bats: ~A~%Status: ~A~%"
           (player-location game)
           (wumpus-location game)
@@ -116,10 +147,13 @@
 (defun initialize()
   (when (or (null *game-setup*) (not (y-or-n-p "Same set-up?")))
           (let* ((rooms (range 20))
+                 (player-loc (delete-random-item rooms))
+                 (wump-loc (delete-random-item rooms))
+                 (current-map (select-map))
                  (new-game (make-instance 'wumpus-game
-                             :game-map *dodecahedron*
-                             :player-location (delete-random-item rooms)
-                             :wumpus-location (delete-random-item rooms)
+                             :game-map current-map
+                             :player-location player-loc
+                             :wumpus-location wump-loc
                              :pits ()
                              :bats ())))
             (push (delete-random-item rooms) (pits new-game)) 
@@ -175,15 +209,16 @@
         (cond
           ((is-wumpus-room wumpus-game cur-room)
            (setf (status wumpus-game) 1)
-           (format *query-io* "AHA! You got the Wumpus!~%"))
+           (format *query-io* "AHA! You got the Wumpus!~%")
+           (return-from shoot-input))
           ((eq (player-location wumpus-game) cur-room)
            (setf (status wumpus-game) -1)
-           (format *query-io* "Ouch! Arrow got you!~%")))))
-    (when (eq 0 (status wumpus-game))
-      (when (eq 0 (arrow-count wumpus-game))
-        (setf (status wumpus-game) -1))
-      (format *query-io* "Missed!~%")
-      (move-wumpus! wumpus-game))))
+           (format *query-io* "Ouch! Arrow got you!~%")
+           (return-from shoot-input)))))
+    (when (eq 0 (arrow-count wumpus-game))
+      (setf (status wumpus-game) -1))
+    (format *query-io* "Missed!~%")
+    (move-wumpus! wumpus-game)))
 
 (defun collect-shoot-rooms (num)
   (let ((retlist nil))
@@ -239,4 +274,3 @@
             (move-or-shoot game))
           (epilogue game))))
     (values)))
-
