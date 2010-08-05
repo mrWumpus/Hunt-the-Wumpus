@@ -1,6 +1,6 @@
 (in-package :net.sinawali.wumpus)
 
-(defun display-file (file)
+(defun display-file (file &optional (lines 21))
   "Simply display the contents of the file to *query-io*. Avoids
   mulitple lines of lisp code formats or prints"
   (let ((line-count 0))
@@ -9,7 +9,7 @@
         ((null line))
         (incf line-count)
         (format *query-io* "~A~%" line)
-        (when (> line-count 23)
+        (when (> line-count lines)
           (setf line-count 0)
           (user-input "Press enter to continue..."))))))
 

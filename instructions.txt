@@ -1,8 +1,7 @@
 Welcome to 'Hunt the Wumpus'
     The Wumpus lives in a cave with 20 rooms. Each room
-has three tunnels leading to the other rooms. (Look at a
-dodecahedron to see how this works-if you don't know
-what a dodecahedron is, ask someone.)
+has three tunnels leading to the other rooms. It is your
+mission to hunt and kill the Wumpus.
 
     HAZARDS:
 Bottomless Pits - Two rooms have bottomless pits in them.

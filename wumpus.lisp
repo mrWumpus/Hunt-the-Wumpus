@@ -72,7 +72,9 @@
       (format *query-io* "~D: ~A~%" (1+ idx) (car cur-map))))
   (let ((map-num (input-value "Please select map:"
                               :validator (lambda (val)
-                                           (and (numberp val) (> val 0) (<= val (length *maps*)))))))
+                                           (and (integerp val) 
+                                                (> val 0) 
+                                                (<= val (length *maps*)))))))
     (get-map (1- map-num))))
 
 (defun move-player! (game room-number)
@@ -165,6 +167,7 @@
 
 (defun reset()
   (let ((game-copy (copy-game *game-setup*)))
+    (format *query-io* "~%Happy hunting!~%~%")
     (setf (status game-copy) 0)
     (setf (arrow-count game-copy) 5)
     (setf *current-game* game-copy)))
@@ -240,13 +243,19 @@
 (defun read-room-number (room)
   (1- room))
 
-(declaim (inline ask-instructions print-instructions))
+(declaim (inline ask-instructions print-instructions ask-caves print-caves))
 
 (defun ask-instructions ()
-  (when (y-or-n-p "Instructions") (print-instructions)))
+  (when (y-or-n-p "Instructions?") (print-instructions)))
 
 (defun print-instructions ()
   (display-file "instructions.txt"))
+
+(defun ask-caves ()
+  (when (y-or-n-p "Cave descriptions?") (print-caves)))
+
+(defun print-caves ()
+  (display-file "cave-instructions.txt"))
 
 (defun redo-loop (fun)
   (do ((doit t (y-or-n-p "Play again?")))
@@ -266,6 +275,7 @@
   (let ((*game-setup* nil))
     (format *query-io* "Hunt the Wumpus!~%")
     (ask-instructions)
+    (ask-caves)
     (redo-loop (lambda ()
         (let ((game (initialize)))
           (do ()
